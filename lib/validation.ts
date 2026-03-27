@@ -3,6 +3,7 @@ import {
   diagramSpecSchema,
   type ExplicitConstraints,
 } from "@/lib/schema";
+import type { GraphPlan } from "@/lib/graph-plan";
 import { MAX_EDGES, MAX_NODES } from "@/lib/safety";
 import { normalizeColor } from "@/lib/normalization";
 import { normalizeText } from "@/lib/utils";
@@ -159,4 +160,46 @@ export function validateRevisionIntegrity(
     (node) =>
       `Revision removed "${node.label}" even though the prompt did not request deletion.`,
   );
+}
+
+export function validateGraphPlan(plan: GraphPlan) {
+  const errors: string[] = [];
+  const nodeIds = new Set<string>();
+
+  for (const node of plan.nodes) {
+    if (nodeIds.has(node.id)) {
+      errors.push(`Duplicate planned node id "${node.id}" detected.`);
+    }
+
+    nodeIds.add(node.id);
+  }
+
+  for (const edge of plan.edges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
+      errors.push(`Planned edge "${edge.source}" -> "${edge.target}" references a missing node.`);
+    }
+  }
+
+  if (plan.diagramType === "itinerary") {
+    const decisionNodes = plan.nodes.filter((node) => node.kind === "decision");
+    for (const node of decisionNodes) {
+      const outgoing = plan.edges.filter((edge) => edge.source === node.id);
+      if (outgoing.length < 2) {
+        errors.push(`Itinerary decision "${node.label}" should have at least two outgoing paths.`);
+      }
+    }
+  }
+
+  if (plan.diagramType === "reference_architecture") {
+    const labels = plan.nodes.map((node) => normalizeText(node.label));
+    if (!labels.some((label) => label.includes("encoder stack"))) {
+      errors.push("Transformer reference diagram must include an encoder stack.");
+    }
+
+    if (!labels.some((label) => label.includes("decoder stack"))) {
+      errors.push("Transformer reference diagram must include a decoder stack.");
+    }
+  }
+
+  return errors;
 }

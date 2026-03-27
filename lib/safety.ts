@@ -31,7 +31,7 @@ export function checkPromptSafety(prompt: string) {
     return {
       ok: false,
       reason:
-        "This app only supports architecture diagram requests. Remove tool-execution or prompt-manipulation instructions.",
+        "This app only supports diagram-generation requests. Remove tool-execution or prompt-manipulation instructions.",
     };
   }
 
