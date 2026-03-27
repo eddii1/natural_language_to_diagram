@@ -1,0 +1,143 @@
+{
+  "id": "api_gateway_crud_app",
+  "title": "API Gateway CRUD Application",
+  "domain": "application",
+  "style": "request_response",
+  "tags": ["api", "crud", "gateway", "backend", "database"],
+  "triggers": [
+    "client sends requests through an api gateway",
+    "backend service reads and writes a database",
+    "standard request response crud application"
+  ],
+  "aliases": [
+    {
+      "canonical": "Client",
+      "terms": ["user", "consumer", "frontend client", "browser"]
+    },
+    {
+      "canonical": "API Gateway",
+      "terms": ["api proxy", "gateway", "edge api", "entry api"]
+    },
+    {
+      "canonical": "Application Service",
+      "terms": ["backend", "app server", "application layer", "service api"]
+    },
+    {
+      "canonical": "Primary Datastore",
+      "terms": ["database", "db", "primary store", "record store"]
+    }
+  ],
+  "requiredNodes": [
+    {
+      "label": "Client",
+      "kind": "actor",
+      "role": "ingress",
+      "description": "External caller that initiates CRUD requests."
+    },
+    {
+      "label": "API Gateway",
+      "kind": "process",
+      "role": "gateway",
+      "description": "Single entry point that accepts and forwards API traffic."
+    },
+    {
+      "label": "Application Service",
+      "kind": "process",
+      "role": "application",
+      "description": "Business logic service that handles CRUD operations."
+    },
+    {
+      "label": "Primary Datastore",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "System of record for application data."
+    }
+  ],
+  "optionalNodes": [
+    {
+      "label": "Cache",
+      "kind": "datastore",
+      "role": "cache",
+      "description": "Read acceleration layer for hot application data."
+    },
+    {
+      "label": "Audit Log",
+      "kind": "datastore",
+      "role": "sink",
+      "description": "Append-only store for request and change history."
+    }
+  ],
+  "canonicalEdges": [
+    {
+      "source": "Client",
+      "target": "API Gateway",
+      "label": "api request",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "API Gateway",
+      "target": "Application Service",
+      "label": "forward request",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Service",
+      "target": "Primary Datastore",
+      "label": "read write",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Service",
+      "target": "API Gateway",
+      "label": "service response",
+      "semantic": "response",
+      "interactionMode": "sync",
+      "required": false
+    }
+  ],
+  "invariants": [
+    {
+      "rule": "Client traffic should traverse the API Gateway before reaching the Application Service.",
+      "severity": "error",
+      "rationale": "The gateway is the defined ingress boundary for this pattern."
+    },
+    {
+      "rule": "The Application Service must have at least one read or write edge to the Primary Datastore.",
+      "severity": "error",
+      "rationale": "A CRUD application needs a persistence boundary for its records."
+    },
+    {
+      "rule": "The API Gateway should not be modeled as the primary business state store.",
+      "severity": "warning",
+      "rationale": "Gateways mediate traffic rather than serving as the system of record."
+    }
+  ],
+  "antiPatterns": [
+    {
+      "condition": "The prompt centers on asynchronous queues, event buses, or background workers.",
+      "rationale": "That shape matches a pipeline or event-driven architecture better than a simple CRUD API."
+    },
+    {
+      "condition": "The prompt focuses on retrieval augmented generation, tool routing, or model reasoning.",
+      "rationale": "Those requirements are more specific than a generic CRUD application."
+    }
+  ],
+  "clarifications": [
+    {
+      "question": "Does the gateway only route traffic, or should it also enforce auth or rate limits?",
+      "reason": "Ingress responsibilities affect whether this pattern should merge with an auth gateway variant.",
+      "blocking": false
+    },
+    {
+      "question": "Is there a cache or search layer that should appear alongside the primary datastore?",
+      "reason": "Read optimization and search indexing are common extensions to the base CRUD topology.",
+      "blocking": false
+    }
+  ]
+}

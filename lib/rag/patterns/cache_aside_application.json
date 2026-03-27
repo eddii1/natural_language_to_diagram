@@ -1,0 +1,125 @@
+{
+  "id": "cache_aside_application",
+  "title": "Cache-Aside Application",
+  "domain": "application",
+  "style": "request_response",
+  "tags": ["cache", "database", "read-through", "performance", "application"],
+  "triggers": [
+    "keep hot reads in cache and fall back to the database",
+    "application checks cache before querying the database",
+    "cache aside read path with database fallback"
+  ],
+  "aliases": [
+    {
+      "canonical": "Application Service",
+      "terms": ["backend", "api service", "application", "business service"]
+    },
+    {
+      "canonical": "Cache",
+      "terms": ["in memory cache", "hot cache", "fast store", "read cache"]
+    },
+    {
+      "canonical": "Primary Datastore",
+      "terms": ["database", "db", "persistent store", "system of record"]
+    }
+  ],
+  "requiredNodes": [
+    {
+      "label": "Application Service",
+      "kind": "process",
+      "role": "application",
+      "description": "Service that serves requests and manages cache usage."
+    },
+    {
+      "label": "Cache",
+      "kind": "datastore",
+      "role": "cache",
+      "description": "Fast-access store for hot reads."
+    },
+    {
+      "label": "Primary Datastore",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "Authoritative record store used on cache misses and writes."
+    }
+  ],
+  "optionalNodes": [
+    {
+      "label": "Client",
+      "kind": "actor",
+      "role": "ingress",
+      "description": "Caller that initiates reads and writes against the application."
+    },
+    {
+      "label": "Invalidation Worker",
+      "kind": "process",
+      "role": "worker",
+      "description": "Background process that evicts or refreshes stale cache entries."
+    }
+  ],
+  "canonicalEdges": [
+    {
+      "source": "Application Service",
+      "target": "Cache",
+      "label": "get cached value",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Service",
+      "target": "Primary Datastore",
+      "label": "fallback read write",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Service",
+      "target": "Cache",
+      "label": "populate or invalidate",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": false
+    }
+  ],
+  "invariants": [
+    {
+      "rule": "The Application Service must retain a fallback path to the Primary Datastore.",
+      "severity": "error",
+      "rationale": "A cache-aside pattern cannot rely on the cache as the sole source of truth."
+    },
+    {
+      "rule": "The Cache should not be modeled as the authoritative system of record.",
+      "severity": "error",
+      "rationale": "The primary datastore owns durable state in a cache-aside design."
+    },
+    {
+      "rule": "If writes are shown, the cache should also be updated, invalidated, or repopulated.",
+      "severity": "warning",
+      "rationale": "Write-side cache maintenance prevents stale reads."
+    }
+  ],
+  "antiPatterns": [
+    {
+      "condition": "The prompt is primarily about search indexing, background extraction, or multi-stage pipelines.",
+      "rationale": "Those flows are not defined by a cache fallback relationship."
+    },
+    {
+      "condition": "The prompt emphasizes pub-sub or queue-based decoupling between producers and consumers.",
+      "rationale": "That structure maps more cleanly to async processing patterns."
+    }
+  ],
+  "clarifications": [
+    {
+      "question": "Do you want to show only the read path, or both reads and write-side invalidation?",
+      "reason": "Some cache-aside diagrams focus on reads while others need to make staleness control explicit.",
+      "blocking": false
+    },
+    {
+      "question": "Should the cache be represented as a shared store or as a private application-side cache?",
+      "reason": "The topology is similar, but labeling differs depending on deployment style.",
+      "blocking": false
+    }
+  ]
+}

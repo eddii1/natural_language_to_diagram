@@ -1,11 +1,20 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, Sparkles, Wand2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Clock3,
+  MessageSquareText,
+  Sparkles,
+  Trash2,
+  Wand2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { HistoryEntry } from "@/lib/session-types";
 import type {
   ClarificationQuestion,
   DiagramAssumption,
@@ -19,16 +28,33 @@ const SAMPLE_PROMPTS = [
   "Build a data-quality pipeline with an intake API, validation service, datastore, anomaly classifier, and an alerting tool. Use amber for guardrails and dark gray for storage.",
 ] as const;
 
+function formatTimestamp(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Just now";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
 export function PromptPanel({
   className,
   prompt,
   revisionPrompt,
   isGenerating,
   isRevising,
+  canRevise,
   extracted,
   questions,
   clarificationAnswers,
   assumptions,
+  history,
+  activeHistoryEntryId,
   error,
   onPromptChange,
   onRevisionPromptChange,
@@ -36,16 +62,21 @@ export function PromptPanel({
   onRevise,
   onUsePrompt,
   onAnswerChange,
+  onRestoreHistoryEntry,
+  onClearWorkflow,
 }: {
   className?: string;
   prompt: string;
   revisionPrompt: string;
   isGenerating: boolean;
   isRevising: boolean;
+  canRevise: boolean;
   extracted: ExplicitConstraints | null;
   questions: ClarificationQuestion[];
   clarificationAnswers: Record<string, string>;
   assumptions: DiagramAssumption[];
+  history: HistoryEntry[];
+  activeHistoryEntryId: string | null;
   error: string | null;
   onPromptChange: (value: string) => void;
   onRevisionPromptChange: (value: string) => void;
@@ -53,6 +84,8 @@ export function PromptPanel({
   onRevise: () => void;
   onUsePrompt: (value: string) => void;
   onAnswerChange: (questionId: string, value: string) => void;
+  onRestoreHistoryEntry: (entryId: string) => void;
+  onClearWorkflow: () => void;
 }) {
   const extractedColors = extracted
     ? [
@@ -75,19 +108,19 @@ export function PromptPanel({
       <div className="flex items-start justify-between gap-3 border-b border-white/8 px-5 py-5">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300/80">
-            Prompt
+            Prompt session
           </div>
           <h1 className="mt-2 text-[30px] font-semibold leading-none text-white">
             Diagram workspace
           </h1>
           <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
-            Generate the first pass, then iterate with natural-language edits in
-            the same panel.
+            Generate fresh workflows, revise the active one, and restore any previous snapshot from the chat log.
           </p>
         </div>
-        <Badge className="border-sky-400/20 bg-sky-400/10 text-sky-200">
-          Dark canvas
-        </Badge>
+        <Button variant="danger" size="sm" onClick={onClearWorkflow}>
+          <Trash2 className="h-4 w-4" />
+          Clear workflow
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
@@ -98,14 +131,24 @@ export function PromptPanel({
         ) : null}
 
         <div className="space-y-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Describe the system
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Compose new workflow
+              </div>
+              <p className="mt-1 text-sm text-slate-400">
+                A new generate request clears the current canvas and builds a fresh workflow from scratch.
+              </p>
+            </div>
+            <Badge className="border-sky-400/20 bg-sky-400/10 text-sky-200">
+              New diagram
+            </Badge>
           </div>
           <Textarea
             value={prompt}
             onChange={(event) => onPromptChange(event.target.value)}
             placeholder="Describe the architecture, colors, routing logic, and important relationships."
-            className="min-h-[200px] border-white/10 bg-white/[0.04] text-base leading-7 text-slate-100 placeholder:text-slate-500"
+            className="min-h-[196px] border-white/10 bg-white/[0.04] text-base leading-7 text-slate-100 placeholder:text-slate-500"
           />
           <div className="flex flex-wrap gap-2">
             {SAMPLE_PROMPTS.map((sample) => (
@@ -121,7 +164,7 @@ export function PromptPanel({
           </div>
           <Button className="w-full" onClick={onGenerate} disabled={isGenerating}>
             <Sparkles className="h-4 w-4" />
-            {isGenerating ? "Generating diagram..." : "Generate diagram"}
+            {isGenerating ? "Generating workflow..." : "Generate new workflow"}
           </Button>
         </div>
 
@@ -130,9 +173,9 @@ export function PromptPanel({
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Refine current diagram</h2>
+              <h2 className="text-sm font-semibold text-white">Modify current workflow</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Apply follow-up edits after the first canvas is generated.
+                Revisions apply to the active canvas only and create a new history snapshot.
               </p>
             </div>
             <Badge className="border-white/10 bg-white/[0.04] text-slate-300">
@@ -143,17 +186,22 @@ export function PromptPanel({
             value={revisionPrompt}
             onChange={(event) => onRevisionPromptChange(event.target.value)}
             placeholder="Examples: Make tools red. Add a response formatter before user response. Insert a cache between the orchestrator and tools."
-            className="min-h-[132px] border-white/10 bg-white/[0.04] text-slate-100 placeholder:text-slate-500"
+            className="min-h-[128px] border-white/10 bg-white/[0.04] text-slate-100 placeholder:text-slate-500"
           />
           <Button
             variant="secondary"
             className="w-full"
             onClick={onRevise}
-            disabled={isRevising}
+            disabled={isRevising || !canRevise}
           >
             <Wand2 className="h-4 w-4" />
             {isRevising ? "Applying revision..." : "Apply revision"}
           </Button>
+          {!canRevise ? (
+            <div className="rounded-[20px] border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-sm text-slate-500">
+              Generate or restore a workflow before applying revisions.
+            </div>
+          ) : null}
         </div>
 
         {questions.length ? (
@@ -163,7 +211,7 @@ export function PromptPanel({
               <div>
                 <h2 className="text-sm font-semibold text-white">Clarifications</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Answer only the decisions that materially affect the diagram.
+                  Answer only the decisions that materially affect the new workflow.
                 </p>
               </div>
               <div className="space-y-3">
@@ -219,6 +267,76 @@ export function PromptPanel({
           </>
         ) : null}
 
+        <div className="my-5 h-px bg-white/8" />
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Prompt history</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Restore any generated or revised workflow snapshot from this session.
+              </p>
+            </div>
+            <Badge className="border-white/10 bg-white/[0.04] text-slate-300">
+              {history.length}
+            </Badge>
+          </div>
+          <div className="space-y-3">
+            {history.length ? (
+              history.map((entry) => {
+                const isActive = entry.id === activeHistoryEntryId;
+
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => onRestoreHistoryEntry(entry.id)}
+                    className={cn(
+                      "w-full rounded-[24px] border px-4 py-4 text-left transition",
+                      isActive
+                        ? "border-sky-400/40 bg-sky-400/10"
+                        : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            className={cn(
+                              "border-white/10 text-xs",
+                              entry.kind === "generate"
+                                ? "bg-sky-400/10 text-sky-200"
+                                : "bg-emerald-400/10 text-emerald-200",
+                            )}
+                          >
+                            {entry.kind === "generate" ? "Generate" : "Revise"}
+                          </Badge>
+                          {isActive ? (
+                            <Badge className="border-white/10 bg-white/[0.08] text-white">
+                              Active
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="text-sm font-medium leading-6 text-slate-100">
+                          {entry.prompt}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1 text-xs text-slate-500">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {formatTimestamp(entry.timestamp)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-sm text-slate-500">
+                No prompt history yet. Generate a workflow or apply a revision to create restorable snapshots.
+              </div>
+            )}
+          </div>
+        </div>
+
         {extracted || assumptions.length ? (
           <>
             <div className="my-5 h-px bg-white/8" />
@@ -228,7 +346,7 @@ export function PromptPanel({
                   <div>
                     <h2 className="text-sm font-semibold text-white">Detected constraints</h2>
                     <p className="mt-1 text-sm text-slate-400">
-                      Explicit instructions the current diagram should respect.
+                      Explicit instructions the active workflow should satisfy.
                     </p>
                   </div>
                   <div className="mt-4 space-y-3">
@@ -264,7 +382,7 @@ export function PromptPanel({
                   <div>
                     <h2 className="text-sm font-semibold text-white">Assumptions</h2>
                     <p className="mt-1 text-sm text-slate-400">
-                      Conservative inferences surfaced before export.
+                      Conservative inferences surfaced for the active workflow snapshot.
                     </p>
                   </div>
                   <Badge className="border-amber-400/20 bg-amber-400/10 text-amber-100">
@@ -302,13 +420,20 @@ export function PromptPanel({
                     ))
                   ) : (
                     <div className="rounded-[20px] border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-sm text-slate-500">
-                      No inferred assumptions yet.
+                      No inferred assumptions for the active workflow.
                     </div>
                   )}
                 </div>
               </div>
             </div>
           </>
+        ) : null}
+
+        {!history.length && !assumptions.length && !extracted ? (
+          <div className="mt-5 flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+            <MessageSquareText className="h-4 w-4" />
+            Session history stays available after clearing the canvas
+          </div>
         ) : null}
       </div>
     </section>

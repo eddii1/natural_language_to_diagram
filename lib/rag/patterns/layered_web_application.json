@@ -1,0 +1,143 @@
+{
+  "id": "layered_web_application",
+  "title": "Layered Web Application",
+  "domain": "application",
+  "style": "request_response",
+  "tags": ["web app", "frontend", "backend", "database", "layered"],
+  "triggers": [
+    "user requests go from frontend to backend to database",
+    "layered web application with separate presentation and backend layers",
+    "web client talks to an application backend"
+  ],
+  "aliases": [
+    {
+      "canonical": "User",
+      "terms": ["client", "customer", "browser user", "end user"]
+    },
+    {
+      "canonical": "Web Frontend",
+      "terms": ["ui", "frontend", "web app", "presentation layer"]
+    },
+    {
+      "canonical": "Application Backend",
+      "terms": ["backend", "app server", "application service", "api backend"]
+    },
+    {
+      "canonical": "Primary Datastore",
+      "terms": ["database", "db", "primary store", "persistent store"]
+    }
+  ],
+  "requiredNodes": [
+    {
+      "label": "User",
+      "kind": "actor",
+      "role": "ingress",
+      "description": "Person or external actor interacting with the application."
+    },
+    {
+      "label": "Web Frontend",
+      "kind": "process",
+      "role": "presentation",
+      "description": "Presentation layer that collects user input and renders output."
+    },
+    {
+      "label": "Application Backend",
+      "kind": "process",
+      "role": "application",
+      "description": "Backend layer that owns business logic and data access."
+    },
+    {
+      "label": "Primary Datastore",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "Persistent store used by the backend layer."
+    }
+  ],
+  "optionalNodes": [
+    {
+      "label": "Cache",
+      "kind": "datastore",
+      "role": "cache",
+      "description": "Optional read cache for popular application data."
+    },
+    {
+      "label": "Search Index",
+      "kind": "datastore",
+      "role": "search_index",
+      "description": "Optional search-specific index for fast query and discovery."
+    }
+  ],
+  "canonicalEdges": [
+    {
+      "source": "User",
+      "target": "Web Frontend",
+      "label": "user interaction",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Web Frontend",
+      "target": "Application Backend",
+      "label": "application request",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Backend",
+      "target": "Primary Datastore",
+      "label": "read write",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Application Backend",
+      "target": "Web Frontend",
+      "label": "application response",
+      "semantic": "response",
+      "interactionMode": "sync",
+      "required": false
+    }
+  ],
+  "invariants": [
+    {
+      "rule": "The Web Frontend should call the Application Backend rather than reading or writing the Primary Datastore directly.",
+      "severity": "error",
+      "rationale": "The backend owns business logic and persistence concerns in a layered application."
+    },
+    {
+      "rule": "The Application Backend must have a data edge to the Primary Datastore.",
+      "severity": "error",
+      "rationale": "The backend layer persists or retrieves the application state."
+    },
+    {
+      "rule": "Optional Cache or Search Index components should be mediated by the Application Backend.",
+      "severity": "warning",
+      "rationale": "Supporting stores should not bypass the core application layer."
+    }
+  ],
+  "antiPatterns": [
+    {
+      "condition": "The prompt emphasizes queues, asynchronous workers, or pipeline stages.",
+      "rationale": "Those traits suggest a pipeline or background-processing pattern rather than a simple layered app."
+    },
+    {
+      "condition": "The prompt describes services exchanging events through a broker.",
+      "rationale": "An event-driven topology is structurally different from a layered web application."
+    }
+  ],
+  "clarifications": [
+    {
+      "question": "Should the frontend be modeled as a browser UI, a mobile client, or a generic presentation layer?",
+      "reason": "The presentation label can be adapted without changing the core topology.",
+      "blocking": false
+    },
+    {
+      "question": "Do you want cache or search components shown, or should the diagram stay minimal?",
+      "reason": "Supporting stores are common but optional additions to the layered pattern.",
+      "blocking": false
+    }
+  ]
+}

@@ -6,78 +6,85 @@ import { DiagramCanvas } from "@/components/diagram-canvas";
 import { InspectorPanel } from "@/components/inspector-panel";
 import { PromptPanel } from "@/components/prompt-panel";
 import { exportCanvasAsPng, exportCanvasAsSvg, exportJson } from "@/lib/export";
-import { layoutDiagram } from "@/lib/layout";
-import { SAMPLE_PROMPT } from "@/lib/demo-data";
 import {
   getDefaultColor,
   inferIcon,
   inferShapeForKind,
-  normalizeDiagramSpec,
 } from "@/lib/normalization";
 import type {
   AnalyzeResponse,
-  ClarificationQuestion,
+  DiagramSpec,
   ExplicitConstraints,
 } from "@/lib/schema";
 import { useDiagramStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-type BusyState = "idle" | "generate" | "revise" | "layout";
+type BusyState = "idle" | "generate" | "revise";
+
+type GenerateResponse = {
+  diagram: DiagramSpec;
+  extracted: ExplicitConstraints;
+};
+
+type ReviseResponse = {
+  diagram: DiagramSpec;
+  extracted?: ExplicitConstraints;
+};
 
 export function DiagramWorkspace() {
   const {
-    diagram,
+    activeDiagram,
+    history,
+    activeHistoryEntryId,
+    draftGeneratePrompt,
+    draftRevisionPrompt,
+    clarificationAnswers,
+    questions,
+    extracted,
+    assumptionsPreview,
+    error,
     selectedNodeId,
     selectedEdgeId,
-    setDiagram,
-    resetDiagram,
+    setActiveDiagram,
+    clearActiveDiagram,
+    restoreHistoryEntry,
+    setDraftGeneratePrompt,
+    setDraftRevisionPrompt,
+    setQuestions,
+    setClarificationAnswers,
+    setExtracted,
+    setAssumptionsPreview,
+    setError,
+    startFreshGenerationRequest,
+    recordGenerateResult,
+    recordRevisionResult,
     clearSelection,
     selectEdge,
     selectNode,
     updateNode,
     updateEdge,
+    removeSelected,
   } = useDiagramStore();
-  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
-  const [revisionPrompt, setRevisionPrompt] = useState("");
   const [busy, setBusy] = useState<BusyState>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<ClarificationQuestion[]>([]);
-  const [clarificationAnswers, setClarificationAnswers] = useState<Record<string, string>>({});
-  const [extracted, setExtracted] = useState<ExplicitConstraints | null>(null);
-  const [assumptionsPreview, setAssumptionsPreview] = useState(diagram.assumptions);
 
-  const selectedNode = diagram.nodes.find((node) => node.id === selectedNodeId);
-  const selectedEdge = diagram.edges.find((edge) => edge.id === selectedEdgeId);
+  const selectedNode = activeDiagram.nodes.find((node) => node.id === selectedNodeId);
+  const selectedEdge = activeDiagram.edges.find((edge) => edge.id === selectedEdgeId);
   const hasSelection = Boolean(selectedNode || selectedEdge);
+  const canRevise = activeDiagram.nodes.length > 0;
 
-  const handleDeleteSelection = () => {
-    if (!selectedNodeId && !selectedEdgeId) {
-      return;
-    }
-
-    setDiagram({
-      ...diagram,
-      nodes: selectedNodeId
-        ? diagram.nodes.filter((node) => node.id !== selectedNodeId)
-        : diagram.nodes,
-      edges: diagram.edges.filter((edge) => {
-        if (selectedEdgeId && edge.id === selectedEdgeId) {
-          return false;
-        }
-
-        if (selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId)) {
-          return false;
-        }
-
-        return true;
-      }),
-    });
-    clearSelection();
+  const handlePromptChange = (value: string) => {
+    setDraftGeneratePrompt(value);
+    setQuestions([]);
+    setClarificationAnswers({});
+    setExtracted(null);
+    setAssumptionsPreview(activeDiagram.assumptions);
+    setError(null);
   };
 
   const handleGenerate = async () => {
     setBusy("generate");
     setError(null);
+    startFreshGenerationRequest();
 
     try {
       const analyzeResponse = await fetch("/api/diagram/analyze", {
@@ -85,14 +92,18 @@ export function DiagramWorkspace() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: draftGeneratePrompt }),
       });
 
-      const analyzeData = (await analyzeResponse.json()) as AnalyzeResponse;
+      const analyzeData = (await analyzeResponse.json()) as AnalyzeResponse & {
+        error?: string;
+      };
 
       if (!analyzeResponse.ok) {
         throw new Error(
-          "reason" in analyzeData ? analyzeData.reason : "Failed to analyze prompt.",
+          "reason" in analyzeData
+            ? analyzeData.reason
+            : analyzeData.error ?? "Failed to analyze prompt.",
         );
       }
 
@@ -101,19 +112,16 @@ export function DiagramWorkspace() {
       }
 
       setExtracted(analyzeData.extracted);
-      setAssumptionsPreview(
-        "assumptionsPreview" in analyzeData ? analyzeData.assumptionsPreview : [],
-      );
+      setAssumptionsPreview(analyzeData.assumptionsPreview);
 
       if (analyzeData.status === "needs_clarification") {
+        setQuestions(analyzeData.questions);
+
         const missingAnswers = analyzeData.questions.some(
           (question) => !clarificationAnswers[question.id]?.trim(),
         );
 
-        setQuestions(analyzeData.questions);
-
         if (missingAnswers) {
-          setBusy("idle");
           return;
         }
       } else {
@@ -126,21 +134,27 @@ export function DiagramWorkspace() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt,
+          prompt: draftGeneratePrompt,
           clarificationAnswers,
         }),
       });
 
-      const generateData = await generateResponse.json();
+      const generateData = (await generateResponse.json()) as GenerateResponse & {
+        error?: string;
+      };
+
       if (!generateResponse.ok) {
         throw new Error(generateData.error ?? "Failed to generate diagram.");
       }
 
-      setDiagram(generateData.diagram);
-      setExtracted(generateData.extracted);
+      recordGenerateResult({
+        prompt: draftGeneratePrompt,
+        diagram: generateData.diagram,
+        extracted: generateData.extracted,
+        assumptions: generateData.diagram.assumptions,
+      });
       setQuestions([]);
-      setRevisionPrompt("");
-      setAssumptionsPreview(generateData.diagram.assumptions);
+      setClarificationAnswers({});
     } catch (generationError) {
       setError(
         generationError instanceof Error
@@ -153,8 +167,13 @@ export function DiagramWorkspace() {
   };
 
   const handleRevise = async () => {
-    if (!revisionPrompt.trim()) {
+    if (!draftRevisionPrompt.trim()) {
       setError("Enter a revision prompt before applying changes.");
+      return;
+    }
+
+    if (!canRevise) {
+      setError("Generate or restore a workflow before applying revisions.");
       return;
     }
 
@@ -168,20 +187,22 @@ export function DiagramWorkspace() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: revisionPrompt,
-          currentDiagram: diagram,
+          prompt: draftRevisionPrompt,
+          currentDiagram: activeDiagram,
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as ReviseResponse & { error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to revise diagram.");
       }
 
-      setDiagram(data.diagram);
-      setExtracted(data.extracted);
-      setAssumptionsPreview(data.diagram.assumptions);
-      setRevisionPrompt("");
+      recordRevisionResult({
+        prompt: draftRevisionPrompt,
+        diagram: data.diagram,
+        extracted: data.extracted ?? extracted,
+        assumptions: data.diagram.assumptions,
+      });
     } catch (revisionError) {
       setError(
         revisionError instanceof Error
@@ -193,28 +214,10 @@ export function DiagramWorkspace() {
     }
   };
 
-  const handleAutoLayout = async () => {
-    setBusy("layout");
-    setError(null);
-
-    try {
-      const next = await layoutDiagram(normalizeDiagramSpec(diagram));
-      setDiagram(next);
-    } catch (layoutError) {
-      setError(
-        layoutError instanceof Error
-          ? layoutError.message
-          : "Failed to auto-layout the current diagram.",
-      );
-    } finally {
-      setBusy("idle");
-    }
-  };
-
   const handleExport = async (format: "png" | "svg" | "json") => {
     try {
       if (format === "json") {
-        exportJson(diagram, "architecture-diagram.json");
+        exportJson(activeDiagram, "architecture-diagram.json");
         return;
       }
 
@@ -244,14 +247,13 @@ export function DiagramWorkspace() {
         <div className="grid gap-5 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
           <div className="order-2 min-w-0 xl:order-1 xl:h-full xl:min-h-0">
             <DiagramCanvas
-              diagram={diagram}
+              diagram={activeDiagram}
               busy={busy !== "idle"}
               selectedNodeId={selectedNodeId}
               selectedEdgeId={selectedEdgeId}
-              onAutoLayout={() => void handleAutoLayout()}
-              onReset={resetDiagram}
+              onDeleteWorkflow={clearActiveDiagram}
               onExport={(format) => void handleExport(format)}
-              onDiagramChange={setDiagram}
+              onDiagramChange={setActiveDiagram}
               onSelectNode={selectNode}
               onSelectEdge={selectEdge}
               onClearSelection={clearSelection}
@@ -266,26 +268,31 @@ export function DiagramWorkspace() {
           >
             <PromptPanel
               className="min-h-[420px] xl:min-h-0"
-              prompt={prompt}
-              revisionPrompt={revisionPrompt}
+              prompt={draftGeneratePrompt}
+              revisionPrompt={draftRevisionPrompt}
               isGenerating={busy === "generate"}
               isRevising={busy === "revise"}
+              canRevise={canRevise}
               extracted={extracted}
               questions={questions}
               clarificationAnswers={clarificationAnswers}
               assumptions={assumptionsPreview}
+              history={history}
+              activeHistoryEntryId={activeHistoryEntryId}
               error={error}
-              onPromptChange={setPrompt}
-              onRevisionPromptChange={setRevisionPrompt}
+              onPromptChange={handlePromptChange}
+              onRevisionPromptChange={setDraftRevisionPrompt}
               onGenerate={() => void handleGenerate()}
               onRevise={() => void handleRevise()}
-              onUsePrompt={setPrompt}
+              onUsePrompt={handlePromptChange}
               onAnswerChange={(questionId, value) =>
-                setClarificationAnswers((current) => ({
-                  ...current,
+                setClarificationAnswers({
+                  ...clarificationAnswers,
                   [questionId]: value,
-                }))
+                })
               }
+              onRestoreHistoryEntry={restoreHistoryEntry}
+              onClearWorkflow={clearActiveDiagram}
             />
 
             {hasSelection ? (
@@ -293,7 +300,7 @@ export function DiagramWorkspace() {
                 className="min-h-[360px] xl:min-h-0"
                 node={selectedNode}
                 edge={selectedEdge}
-                onDelete={handleDeleteSelection}
+                onDelete={removeSelected}
                 onNodeChange={(patch) => {
                   if (!selectedNode) {
                     return;

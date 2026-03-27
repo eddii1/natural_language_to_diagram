@@ -1,0 +1,143 @@
+{
+  "id": "auth_gateway_backend",
+  "title": "Authenticated Gateway to Protected Backend",
+  "domain": "security",
+  "style": "request_response",
+  "tags": ["authentication", "authorization", "gateway", "protected api", "backend"],
+  "triggers": [
+    "requests must pass auth before reaching the backend",
+    "protect internal apis with authentication and authorization",
+    "authorize clients before data access"
+  ],
+  "aliases": [
+    {
+      "canonical": "Client",
+      "terms": ["user", "caller", "consumer", "application client"]
+    },
+    {
+      "canonical": "Auth Gateway",
+      "terms": ["auth proxy", "authorization gateway", "access gateway", "policy gateway"]
+    },
+    {
+      "canonical": "Protected Service",
+      "terms": ["backend service", "internal api", "protected backend", "business service"]
+    },
+    {
+      "canonical": "Protected Datastore",
+      "terms": ["secure database", "protected db", "restricted store"]
+    }
+  ],
+  "requiredNodes": [
+    {
+      "label": "Client",
+      "kind": "actor",
+      "role": "ingress",
+      "description": "Caller attempting to access protected functionality."
+    },
+    {
+      "label": "Auth Gateway",
+      "kind": "process",
+      "role": "auth",
+      "description": "Gateway that authenticates and authorizes inbound traffic."
+    },
+    {
+      "label": "Protected Service",
+      "kind": "process",
+      "role": "service",
+      "description": "Backend service reachable only after access checks pass."
+    },
+    {
+      "label": "Protected Datastore",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "Restricted persistence layer for protected business data."
+    }
+  ],
+  "optionalNodes": [
+    {
+      "label": "Identity Provider",
+      "kind": "process",
+      "role": "identity_provider",
+      "description": "External or shared service that verifies identities and issues claims."
+    },
+    {
+      "label": "Policy Store",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "Configuration store for authorization rules and policies."
+    }
+  ],
+  "canonicalEdges": [
+    {
+      "source": "Client",
+      "target": "Auth Gateway",
+      "label": "authenticated request",
+      "semantic": "request",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Auth Gateway",
+      "target": "Protected Service",
+      "label": "authorized request",
+      "semantic": "approval",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Protected Service",
+      "target": "Protected Datastore",
+      "label": "read write",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Protected Service",
+      "target": "Auth Gateway",
+      "label": "service response",
+      "semantic": "response",
+      "interactionMode": "sync",
+      "required": false
+    }
+  ],
+  "invariants": [
+    {
+      "rule": "Protected Service traffic must pass through the Auth Gateway before execution.",
+      "severity": "error",
+      "rationale": "The gateway enforces the auth boundary that defines this pattern."
+    },
+    {
+      "rule": "The Protected Service must interact with the Protected Datastore only after access checks are completed.",
+      "severity": "error",
+      "rationale": "Authorization should be resolved before protected state is read or mutated."
+    },
+    {
+      "rule": "If authorization failure is described explicitly, a denied or blocked outcome should also be modeled.",
+      "severity": "warning",
+      "rationale": "Security flows are clearer when both allowed and denied paths are visible."
+    }
+  ],
+  "antiPatterns": [
+    {
+      "condition": "The prompt focuses on token issuance flows with an identity provider and client redirect behavior.",
+      "rationale": "That is closer to an explicit authn/authz token flow than a gateway-protected backend."
+    },
+    {
+      "condition": "The prompt is primarily about fan-out, background workers, or event consumers.",
+      "rationale": "Security gating is secondary in those topologies."
+    }
+  ],
+  "clarifications": [
+    {
+      "question": "Should the gateway only authorize access, or should it also integrate with an identity provider?",
+      "reason": "Identity federation may require adding a dedicated identity component.",
+      "blocking": false
+    },
+    {
+      "question": "Do you want denied requests represented explicitly in the diagram?",
+      "reason": "Security review diagrams often need both allow and deny outcomes.",
+      "blocking": false
+    }
+  ]
+}

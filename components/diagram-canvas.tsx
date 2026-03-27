@@ -8,7 +8,6 @@ import {
   Background,
   Controls,
   MarkerType,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -59,8 +58,7 @@ function CanvasInner({
   busy,
   selectedNodeId,
   selectedEdgeId,
-  onAutoLayout,
-  onReset,
+  onDeleteWorkflow,
   onExport,
   onDiagramChange,
   onSelectNode,
@@ -71,8 +69,7 @@ function CanvasInner({
   busy: boolean;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
-  onAutoLayout: () => void | Promise<void>;
-  onReset: () => void;
+  onDeleteWorkflow: () => void;
   onExport: (format: "png" | "svg" | "json") => void;
   onDiagramChange: (diagram: DiagramSpec) => void;
   onSelectNode: (nodeId: string | null) => void;
@@ -87,9 +84,10 @@ function CanvasInner({
   const baseDiagramRef = useRef(diagram);
   const nodesRef = useRef<CanvasNode[]>([]);
   const edgesRef = useRef<CanvasEdge[]>([]);
-  const initialFlowRef = useRef(diagramToReactFlow(diagram));
-  const [nodes, setNodes] = useNodesState<CanvasNode>(initialFlowRef.current.nodes);
-  const [edges, setEdges] = useEdgesState<CanvasEdge>(initialFlowRef.current.edges);
+  const initialFlow = diagramToReactFlow(diagram);
+  const [nodes, setNodes] = useNodesState<CanvasNode>(initialFlow.nodes);
+  const [edges, setEdges] = useEdgesState<CanvasEdge>(initialFlow.edges);
+  const isEmpty = nodes.length === 0 && edges.length === 0;
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -343,24 +341,29 @@ function CanvasInner({
       >
         <Toolbar
           busy={busy}
-          onAutoLayout={onAutoLayout}
-          onReset={onReset}
           onAddNode={handleAddNode}
           onDeleteSelection={handleDeleteSelection}
+          onDeleteWorkflow={onDeleteWorkflow}
           onExport={onExport}
         />
-        <Controls position="bottom-right" showInteractive={false} />
-        <MiniMap
-          position="bottom-left"
-          pannable
-          zoomable
-          className="!rounded-[24px] !border !border-white/10 !bg-slate-950/85"
-          nodeColor={(node) =>
-            ((node.data as { node?: { color?: string } })?.node?.color ?? "#0f4c81")
-          }
-        />
+        <Controls position="top-right" showInteractive={false} />
         <Background color="#334155" gap={24} size={1.1} />
       </ReactFlow>
+      {isEmpty ? (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
+          <div className="max-w-md rounded-[28px] border border-dashed border-white/12 bg-slate-950/70 px-6 py-7 text-center shadow-[0_26px_60px_-40px_rgba(2,6,23,0.95)] backdrop-blur-xl">
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-300/70">
+              Canvas is empty
+            </div>
+            <div className="mt-3 text-xl font-semibold text-white">
+              Generate a new workflow or restore one from history
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Clearing the canvas does not erase prompt history. You can start fresh or reopen any earlier snapshot.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -370,8 +373,7 @@ export function DiagramCanvas(props: {
   busy: boolean;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
-  onAutoLayout: () => void | Promise<void>;
-  onReset: () => void;
+  onDeleteWorkflow: () => void;
   onExport: (format: "png" | "svg" | "json") => void;
   onDiagramChange: (diagram: DiagramSpec) => void;
   onSelectNode: (nodeId: string | null) => void;

@@ -1,0 +1,135 @@
+{
+  "id": "search_indexing_pipeline",
+  "title": "Search Indexing Pipeline",
+  "domain": "integration",
+  "style": "pipeline",
+  "tags": ["search", "indexing", "catalog", "worker", "eventual consistency"],
+  "triggers": [
+    "index product catalog changes for search",
+    "transactional data updates should reach a search index",
+    "background worker updates the search index"
+  ],
+  "aliases": [
+    {
+      "canonical": "Application Service",
+      "terms": ["catalog service", "source service", "backend", "transactional app"]
+    },
+    {
+      "canonical": "Source Datastore",
+      "terms": ["primary database", "source db", "record store", "transaction store"]
+    },
+    {
+      "canonical": "Indexing Worker",
+      "terms": ["indexer", "sync worker", "projection worker", "indexing job"]
+    },
+    {
+      "canonical": "Search Index",
+      "terms": ["search store", "document index", "search database", "index"]
+    }
+  ],
+  "requiredNodes": [
+    {
+      "label": "Application Service",
+      "kind": "process",
+      "role": "application",
+      "description": "Transactional service that owns the source data."
+    },
+    {
+      "label": "Source Datastore",
+      "kind": "datastore",
+      "role": "datastore",
+      "description": "System of record where source entities are written."
+    },
+    {
+      "label": "Indexing Worker",
+      "kind": "process",
+      "role": "worker",
+      "description": "Background process that transforms source data into searchable documents."
+    },
+    {
+      "label": "Search Index",
+      "kind": "datastore",
+      "role": "search_index",
+      "description": "Derived store optimized for search queries."
+    }
+  ],
+  "optionalNodes": [
+    {
+      "label": "Change Queue",
+      "kind": "datastore",
+      "role": "queue",
+      "description": "Optional buffer for asynchronous indexing requests."
+    },
+    {
+      "label": "Search API",
+      "kind": "process",
+      "role": "service",
+      "description": "Separate read path for serving search requests from the index."
+    }
+  ],
+  "canonicalEdges": [
+    {
+      "source": "Application Service",
+      "target": "Source Datastore",
+      "label": "write records",
+      "semantic": "data",
+      "interactionMode": "sync",
+      "required": true
+    },
+    {
+      "source": "Source Datastore",
+      "target": "Indexing Worker",
+      "label": "change feed",
+      "semantic": "data",
+      "interactionMode": "async",
+      "required": true
+    },
+    {
+      "source": "Indexing Worker",
+      "target": "Search Index",
+      "label": "update index",
+      "semantic": "data",
+      "interactionMode": "async",
+      "required": true
+    }
+  ],
+  "invariants": [
+    {
+      "rule": "The Source Datastore should remain the system of record, not the Search Index.",
+      "severity": "error",
+      "rationale": "Search indices are derived projections optimized for query patterns."
+    },
+    {
+      "rule": "Changes from the source system must flow to the Search Index through an indexing step.",
+      "severity": "error",
+      "rationale": "A worker or equivalent transformation stage defines the indexing pipeline."
+    },
+    {
+      "rule": "The indexing path should be modeled as asynchronous unless the prompt explicitly requires inline updates.",
+      "severity": "warning",
+      "rationale": "Search indexing is commonly decoupled from transactional writes."
+    }
+  ],
+  "antiPatterns": [
+    {
+      "condition": "The prompt is about hot read caching with direct database fallback.",
+      "rationale": "That is a cache-aside pattern, not a derived search projection."
+    },
+    {
+      "condition": "The prompt centers on user-facing retrieval for LLM answers rather than indexing source records.",
+      "rationale": "That fits RAG retrieval more than search indexing infrastructure."
+    }
+  ],
+  "clarifications": [
+    {
+      "question": "Should indexing be triggered directly from the source datastore or through a queue?",
+      "reason": "Both topologies are common, and the queue adds an explicit buffering component.",
+      "blocking": false
+    },
+    {
+      "question": "Do you want the search read path shown separately from the write-side indexing flow?",
+      "reason": "Some diagrams include only index maintenance, while others also show query serving.",
+      "blocking": false
+    }
+  ]
+}
