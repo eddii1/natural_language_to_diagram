@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --panel: rgba(255, 255, 255, 0.88);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-space-grotesk);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.react-flow__renderer {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.react-flow__controls-button {
+  border-color: rgb(226 232 240) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: rgb(51 65 85) !important;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.diagram-flow .react-flow__pane {
+  cursor: default;
+}
+
+.diagram-flow .react-flow__node.selected > div,
+.diagram-flow .react-flow__edge.selected path {
+  filter: drop-shadow(0 0 0.65rem rgba(14, 165, 233, 0.28));
+}
