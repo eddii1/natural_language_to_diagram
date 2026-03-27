@@ -23,7 +23,7 @@ export function Toolbar({
   const reactFlow = useReactFlow();
 
   return (
-    <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center gap-2 rounded-[28px] border border-white/70 bg-white/90 p-2 shadow-[0_22px_50px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
+    <div className="absolute top-4 left-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-[24px] border border-white/10 bg-slate-950/80 p-2 shadow-[0_22px_50px_-28px_rgba(2,6,23,0.95)] backdrop-blur-xl">
       <Button
         size="sm"
         variant="secondary"
@@ -53,7 +53,7 @@ export function Toolbar({
         <RefreshCcw className="h-4 w-4" />
         Reset
       </Button>
-      <div className="ml-auto flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 xl:ml-4">
         <Button size="sm" variant="secondary" onClick={() => onExport("png")}>
           <Download className="h-4 w-4" />
           PNG

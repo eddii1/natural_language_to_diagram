@@ -49,7 +49,7 @@ export default function LabeledEdge({
         <EdgeLabelRenderer>
           <div
             className={cn(
-              "nodrag nopan absolute rounded-full border border-white/90 bg-white/95 px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm",
+              "nodrag nopan absolute rounded-full border border-white/10 bg-slate-950/92 px-2.5 py-1 text-[11px] font-medium text-slate-200 shadow-[0_12px_20px_-12px_rgba(2,6,23,0.9)] backdrop-blur",
             )}
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,

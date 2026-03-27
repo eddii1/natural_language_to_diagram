@@ -1,3 +1,4 @@
+import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 
@@ -45,11 +46,15 @@ const COLOR_PATTERN =
 const TOOL_SPLIT_PATTERN = /\s*(?:,|;|\bor\b|\band\b)\s*/i;
 
 function modelOrNull() {
+  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    return google(process.env.GOOGLE_MODEL ?? process.env.AI_MODEL ?? "gemini-2.5-pro");
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return null;
   }
 
-  return openai(process.env.OPENAI_MODEL ?? "gpt-4.1");
+  return openai(process.env.OPENAI_MODEL ?? process.env.AI_MODEL ?? "gpt-4.1");
 }
 
 function composePrompt(

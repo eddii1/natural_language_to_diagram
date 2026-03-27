@@ -7,17 +7,17 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-sky-600 px-4 py-2.5 text-white shadow-[0_10px_24px_-12px_rgba(2,132,199,0.9)] hover:bg-sky-700",
+          "bg-[linear-gradient(135deg,#38bdf8,#2563eb)] px-4 py-2.5 text-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.95)] hover:brightness-110",
         secondary:
-          "border border-slate-200 bg-white px-4 py-2.5 text-slate-700 hover:border-slate-300 hover:bg-slate-50",
-        ghost: "px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+          "border border-white/10 bg-white/[0.05] px-4 py-2.5 text-slate-100 hover:border-white/15 hover:bg-white/[0.1]",
+        ghost: "px-3 py-2 text-slate-300 hover:bg-white/[0.08] hover:text-white",
         danger:
-          "bg-rose-600 px-4 py-2.5 text-white shadow-[0_10px_24px_-12px_rgba(225,29,72,0.7)] hover:bg-rose-700",
+          "border border-rose-400/20 bg-rose-500/15 px-4 py-2.5 text-rose-100 shadow-[0_18px_40px_-20px_rgba(190,24,93,0.65)] hover:bg-rose-500/25",
       },
       size: {
         default: "",

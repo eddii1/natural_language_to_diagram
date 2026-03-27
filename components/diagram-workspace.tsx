@@ -1,9 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
-import { AssumptionsPanel } from "@/components/assumptions-panel";
-import { ClarificationPanel } from "@/components/clarification-panel";
 import { DiagramCanvas } from "@/components/diagram-canvas";
 import { InspectorPanel } from "@/components/inspector-panel";
 import { PromptPanel } from "@/components/prompt-panel";
@@ -22,6 +20,7 @@ import type {
   ExplicitConstraints,
 } from "@/lib/schema";
 import { useDiagramStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 type BusyState = "idle" | "generate" | "revise" | "layout";
 
@@ -32,11 +31,12 @@ export function DiagramWorkspace() {
     selectedEdgeId,
     setDiagram,
     resetDiagram,
+    clearSelection,
+    selectEdge,
+    selectNode,
     updateNode,
     updateEdge,
-    removeSelected,
   } = useDiagramStore();
-  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
   const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
   const [revisionPrompt, setRevisionPrompt] = useState("");
   const [busy, setBusy] = useState<BusyState>("idle");
@@ -48,6 +48,32 @@ export function DiagramWorkspace() {
 
   const selectedNode = diagram.nodes.find((node) => node.id === selectedNodeId);
   const selectedEdge = diagram.edges.find((edge) => edge.id === selectedEdgeId);
+  const hasSelection = Boolean(selectedNode || selectedEdge);
+
+  const handleDeleteSelection = () => {
+    if (!selectedNodeId && !selectedEdgeId) {
+      return;
+    }
+
+    setDiagram({
+      ...diagram,
+      nodes: selectedNodeId
+        ? diagram.nodes.filter((node) => node.id !== selectedNodeId)
+        : diagram.nodes,
+      edges: diagram.edges.filter((edge) => {
+        if (selectedEdgeId && edge.id === selectedEdgeId) {
+          return false;
+        }
+
+        if (selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId)) {
+          return false;
+        }
+
+        return true;
+      }),
+    });
+    clearSelection();
+  };
 
   const handleGenerate = async () => {
     setBusy("generate");
@@ -213,77 +239,86 @@ export function DiagramWorkspace() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_36%),radial-gradient(circle_at_bottom_right,#fde68a,transparent_30%),linear-gradient(180deg,#f8fafc,#eef2ff)] px-4 py-4 text-slate-950 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-[1680px] gap-4 xl:grid-cols-[360px_minmax(0,1fr)_320px]">
-        <div className="space-y-4">
-          <PromptPanel
-            prompt={prompt}
-            revisionPrompt={revisionPrompt}
-            isGenerating={busy === "generate"}
-            isRevising={busy === "revise"}
-            extracted={extracted}
-            onPromptChange={setPrompt}
-            onRevisionPromptChange={setRevisionPrompt}
-            onGenerate={() => void handleGenerate()}
-            onRevise={() => void handleRevise()}
-            onUsePrompt={setPrompt}
-          />
-          <ClarificationPanel
-            questions={questions}
-            answers={clarificationAnswers}
-            onAnswerChange={(questionId, value) =>
-              setClarificationAnswers((current) => ({
-                ...current,
-                [questionId]: value,
-              }))
-            }
-          />
-          <AssumptionsPanel assumptions={assumptionsPreview} />
-        </div>
-
-        <div className="space-y-4">
-          {error ? (
-            <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_18px_40px_-30px_rgba(190,24,93,0.5)]">
-              {error}
-            </div>
-          ) : null}
-          <div ref={canvasWrapperRef}>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.12),transparent_26%),linear-gradient(180deg,#050816_0%,#0b1020_100%)] px-4 py-4 text-slate-100 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1800px] xl:h-[calc(100vh-2rem)]">
+        <div className="grid gap-5 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
+          <div className="order-2 min-w-0 xl:order-1 xl:h-full xl:min-h-0">
             <DiagramCanvas
               diagram={diagram}
               busy={busy !== "idle"}
+              selectedNodeId={selectedNodeId}
+              selectedEdgeId={selectedEdgeId}
               onAutoLayout={() => void handleAutoLayout()}
               onReset={resetDiagram}
               onExport={(format) => void handleExport(format)}
+              onDiagramChange={setDiagram}
+              onSelectNode={selectNode}
+              onSelectEdge={selectEdge}
+              onClearSelection={clearSelection}
             />
           </div>
+
+          <aside
+            className={cn(
+              "order-1 flex min-h-0 flex-col gap-5 xl:order-2 xl:h-full",
+              hasSelection && "xl:grid xl:grid-rows-2",
+            )}
+          >
+            <PromptPanel
+              className="min-h-[420px] xl:min-h-0"
+              prompt={prompt}
+              revisionPrompt={revisionPrompt}
+              isGenerating={busy === "generate"}
+              isRevising={busy === "revise"}
+              extracted={extracted}
+              questions={questions}
+              clarificationAnswers={clarificationAnswers}
+              assumptions={assumptionsPreview}
+              error={error}
+              onPromptChange={setPrompt}
+              onRevisionPromptChange={setRevisionPrompt}
+              onGenerate={() => void handleGenerate()}
+              onRevise={() => void handleRevise()}
+              onUsePrompt={setPrompt}
+              onAnswerChange={(questionId, value) =>
+                setClarificationAnswers((current) => ({
+                  ...current,
+                  [questionId]: value,
+                }))
+              }
+            />
+
+            {hasSelection ? (
+              <InspectorPanel
+                className="min-h-[360px] xl:min-h-0"
+                node={selectedNode}
+                edge={selectedEdge}
+                onDelete={handleDeleteSelection}
+                onNodeChange={(patch) => {
+                  if (!selectedNode) {
+                    return;
+                  }
+
+                  const nextKind = patch.kind ?? selectedNode.kind;
+                  updateNode(selectedNode.id, {
+                    ...patch,
+                    kind: nextKind,
+                    icon: patch.icon ?? inferIcon(nextKind, selectedNode.icon),
+                    shape: patch.shape ?? inferShapeForKind(nextKind),
+                    color: patch.color ?? selectedNode.color ?? getDefaultColor(nextKind),
+                  });
+                }}
+                onEdgeChange={(patch) => {
+                  if (!selectedEdge) {
+                    return;
+                  }
+
+                  updateEdge(selectedEdge.id, patch);
+                }}
+              />
+            ) : null}
+          </aside>
         </div>
-
-        <InspectorPanel
-          node={selectedNode}
-          edge={selectedEdge}
-          onDelete={removeSelected}
-          onNodeChange={(patch) => {
-            if (!selectedNode) {
-              return;
-            }
-
-            const nextKind = patch.kind ?? selectedNode.kind;
-            updateNode(selectedNode.id, {
-              ...patch,
-              kind: nextKind,
-              icon: patch.icon ?? inferIcon(nextKind, selectedNode.icon),
-              shape: patch.shape ?? inferShapeForKind(nextKind),
-              color: patch.color ?? selectedNode.color ?? getDefaultColor(nextKind),
-            });
-          }}
-          onEdgeChange={(patch) => {
-            if (!selectedEdge) {
-              return;
-            }
-
-            updateEdge(selectedEdge.id, patch);
-          }}
-        />
       </div>
     </main>
   );

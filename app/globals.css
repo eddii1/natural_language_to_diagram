@@ -2,9 +2,9 @@
 @import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --panel: rgba(255, 255, 255, 0.88);
+  --background: #050816;
+  --foreground: #e2e8f0;
+  --panel: rgba(15, 23, 42, 0.82);
 }
 
 @theme inline {
@@ -26,6 +26,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-manrope), sans-serif;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.1), transparent 28%),
+    linear-gradient(180deg, #050816 0%, #0b1020 100%);
 }
 
 button,
@@ -37,15 +42,29 @@ select {
 
 .react-flow__renderer {
   background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(100, 116, 139, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 116, 139, 0.12) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .react-flow__controls-button {
-  border-color: rgb(226 232 240) !important;
-  background: rgba(255, 255, 255, 0.92) !important;
-  color: rgb(51 65 85) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(2, 6, 23, 0.92) !important;
+  color: rgb(226 232 240) !important;
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border-radius: 18px !important;
+  box-shadow: 0 22px 40px -28px rgba(2, 6, 23, 0.95);
+}
+
+.react-flow__minimap {
+  background: rgba(2, 6, 23, 0.82) !important;
+}
+
+.react-flow__background {
+  background-color: transparent;
 }
 
 .react-flow__attribution {
@@ -58,5 +77,19 @@ select {
 
 .diagram-flow .react-flow__node.selected > div,
 .diagram-flow .react-flow__edge.selected path {
-  filter: drop-shadow(0 0 0.65rem rgba(14, 165, 233, 0.28));
+  filter: drop-shadow(0 0 0.8rem rgba(56, 189, 248, 0.28));
+}
+
+.diagram-flow .react-flow__selection {
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.diagram-flow .react-flow__handle {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.diagram-flow .react-flow__handle:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.16);
 }

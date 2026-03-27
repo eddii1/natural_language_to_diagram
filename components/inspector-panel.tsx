@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleDashed, PencilLine, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import type {
   DiagramNodeKind,
   EdgeSemantic,
 } from "@/lib/schema";
+import { cn } from "@/lib/utils";
 
 const nodeKindOptions: DiagramNodeKind[] = [
   "actor",
@@ -39,224 +40,206 @@ const edgeSemantics: EdgeSemantic[] = [
 ];
 
 export function InspectorPanel({
+  className,
   node,
   edge,
   onNodeChange,
   onEdgeChange,
   onDelete,
 }: {
+  className?: string;
   node: DiagramNode | undefined;
   edge: DiagramEdge | undefined;
   onNodeChange: (patch: Partial<DiagramNode>) => void;
   onEdgeChange: (patch: Partial<DiagramEdge>) => void;
   onDelete: () => void;
 }) {
+  if (!node && !edge) {
+    return null;
+  }
+
+  const selectClassName =
+    "h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20";
+
   return (
-    <section className="rounded-[32px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_26px_52px_-34px_rgba(15,23,42,0.55)]">
-      <div className="flex items-start justify-between gap-3">
+    <section
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(8,13,27,0.98))] shadow-[0_36px_90px_-46px_rgba(2,6,23,0.9)]",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-white/8 px-5 py-5">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
-            Inspector
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300/80">
+            Canvas editor
           </div>
-          <h2 className="mt-2 text-xl font-semibold text-slate-950">
-            {node ? node.label : edge ? edge.label ?? "Selected edge" : "Canvas editor"}
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            {node ? node.label : edge?.label ?? "Selected edge"}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Edit semantic meaning, styling, labels, and connections without leaving
-            the canvas.
+          <p className="mt-1 text-sm text-slate-400">
+            Adjust metadata, style, and connection semantics without leaving the
+            canvas.
           </p>
         </div>
-        {(node || edge) ? (
-          <Button variant="danger" size="icon" onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        ) : null}
+        <Button variant="danger" size="icon" onClick={onDelete}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
 
-      {node ? (
-        <div className="mt-5 space-y-4">
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Label
-            </span>
-            <Input
-              value={node.label}
-              onChange={(event) => onNodeChange({ label: event.target.value })}
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
+        {node ? (
+          <div className="space-y-4">
             <label className="block space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Kind
+                Label
               </span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                value={node.kind}
-                onChange={(event) => {
-                  const kind = event.target.value as DiagramNodeKind;
-                  onNodeChange({
-                    kind,
-                    shape: inferShapeForKind(kind),
-                    color: getDefaultColor(kind),
-                  });
-                }}
-              >
-                {nodeKindOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Icon
-              </span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                value={node.icon ?? "none"}
-                onChange={(event) => onNodeChange({ icon: event.target.value })}
-              >
-                {ICON_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Color
-            </span>
-            <div className="flex gap-3">
-              <input
-                className="h-11 w-16 rounded-2xl border border-slate-200 bg-white p-2"
-                type="color"
-                value={node.color}
-                onChange={(event) => onNodeChange({ color: event.target.value })}
-              />
               <Input
-                value={node.color}
-                onChange={(event) => onNodeChange({ color: event.target.value })}
+                value={node.label}
+                onChange={(event) => onNodeChange({ label: event.target.value })}
               />
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Kind
+                </span>
+                <select
+                  className={selectClassName}
+                  value={node.kind}
+                  onChange={(event) => {
+                    const kind = event.target.value as DiagramNodeKind;
+                    onNodeChange({
+                      kind,
+                      shape: inferShapeForKind(kind),
+                      color: getDefaultColor(kind),
+                    });
+                  }}
+                >
+                  {nodeKindOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Icon
+                </span>
+                <select
+                  className={selectClassName}
+                  value={node.icon ?? "none"}
+                  onChange={(event) => onNodeChange({ icon: event.target.value })}
+                >
+                  {ICON_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          </label>
 
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Notes
-            </span>
-            <Textarea
-              className="min-h-[120px] bg-slate-50/70"
-              value={node.notes ?? ""}
-              onChange={(event) => onNodeChange({ notes: event.target.value })}
-            />
-          </label>
-        </div>
-      ) : edge ? (
-        <div className="mt-5 space-y-4">
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Label
-            </span>
-            <Input
-              value={edge.label ?? ""}
-              onChange={(event) => onEdgeChange({ label: event.target.value })}
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Semantic
+                Color
               </span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                value={edge.semantic}
-                onChange={(event) =>
-                  onEdgeChange({ semantic: event.target.value as EdgeSemantic })
-                }
-              >
-                {edgeSemantics.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-3">
+                <input
+                  className="h-11 w-16 rounded-2xl border border-white/10 bg-white/[0.04] p-2"
+                  type="color"
+                  value={node.color}
+                  onChange={(event) => onNodeChange({ color: event.target.value })}
+                />
+                <Input
+                  value={node.color}
+                  onChange={(event) => onNodeChange({ color: event.target.value })}
+                />
+              </div>
             </label>
 
             <label className="block space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Style
+                Notes
               </span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                value={edge.style}
-                onChange={(event) =>
-                  onEdgeChange({ style: event.target.value as DiagramEdge["style"] })
-                }
-              >
-                <option value="solid">solid</option>
-                <option value="dashed">dashed</option>
-              </select>
+              <Textarea
+                className="min-h-[160px]"
+                value={node.notes ?? ""}
+                onChange={(event) => onNodeChange({ notes: event.target.value })}
+              />
             </label>
           </div>
-
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Color
-            </span>
-            <div className="flex gap-3">
-              <input
-                className="h-11 w-16 rounded-2xl border border-slate-200 bg-white p-2"
-                type="color"
-                value={edge.color ?? "#334155"}
-                onChange={(event) => onEdgeChange({ color: event.target.value })}
-              />
+        ) : edge ? (
+          <div className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Label
+              </span>
               <Input
-                value={edge.color ?? "#334155"}
-                onChange={(event) => onEdgeChange({ color: event.target.value })}
+                value={edge.label ?? ""}
+                onChange={(event) => onEdgeChange({ label: event.target.value })}
               />
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Semantic
+                </span>
+                <select
+                  className={selectClassName}
+                  value={edge.semantic}
+                  onChange={(event) =>
+                    onEdgeChange({ semantic: event.target.value as EdgeSemantic })
+                  }
+                >
+                  {edgeSemantics.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Style
+                </span>
+                <select
+                  className={selectClassName}
+                  value={edge.style}
+                  onChange={(event) =>
+                    onEdgeChange({ style: event.target.value as DiagramEdge["style"] })
+                  }
+                >
+                  <option value="solid">solid</option>
+                  <option value="dashed">dashed</option>
+                </select>
+              </label>
             </div>
-          </label>
-        </div>
-      ) : (
-        <div className="mt-6 space-y-4">
-          <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-4">
-            <div className="flex items-start gap-3">
-              <PencilLine className="mt-0.5 h-5 w-5 text-sky-700" />
-              <div className="space-y-1">
-                <div className="text-sm font-semibold text-slate-800">
-                  Click a node or edge to edit it
-                </div>
-                <div className="text-sm text-slate-500">
-                  Use the canvas to move blocks, reconnect arrows, and create new
-                  relationships. The inspector updates based on your selection.
-                </div>
+
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Color
+              </span>
+              <div className="flex gap-3">
+                <input
+                  className="h-11 w-16 rounded-2xl border border-white/10 bg-white/[0.04] p-2"
+                  type="color"
+                  value={edge.color ?? "#334155"}
+                  onChange={(event) => onEdgeChange({ color: event.target.value })}
+                />
+                <Input
+                  value={edge.color ?? "#334155"}
+                  onChange={(event) => onEdgeChange({ color: event.target.value })}
+                />
               </div>
-            </div>
+            </label>
           </div>
-          <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-4">
-            <div className="flex items-start gap-3">
-              <CircleDashed className="mt-0.5 h-5 w-5 text-slate-700" />
-              <div className="space-y-1">
-                <div className="text-sm font-semibold text-slate-800">
-                  Semantic palette
-                </div>
-                <div className="text-sm text-slate-500">
-                  Rounded rectangles represent services, cylinders represent storage,
-                  pills represent actors or endpoints, and diamonds represent routing
-                  decisions.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        ) : null}
+      </div>
     </section>
   );
 }

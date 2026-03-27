@@ -8,7 +8,7 @@ V1 hackathon app that turns architecture-style natural language into a single ed
 - React Flow
 - ELK auto-layout
 - Zod validation
-- Vercel AI SDK with optional OpenAI model generation
+- Vercel AI SDK with optional Gemini or OpenAI model generation
 - Zustand client state
 
 ## Features
@@ -35,7 +35,21 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Optionally set `OPENAI_API_KEY` for model-backed generation. Without it, the app uses the built-in heuristic fallback.
+3. Optionally set one model provider key for model-backed generation:
+
+```bash
+GOOGLE_GENERATIVE_AI_API_KEY=...
+GOOGLE_MODEL=gemini-2.5-pro
+```
+
+or
+
+```bash
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4.1
+```
+
+If neither is set, the app uses the built-in heuristic fallback.
 
 4. Start the app:
 

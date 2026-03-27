@@ -38,25 +38,25 @@ function Handles() {
         id="target-top"
         type="target"
         position={Position.Top}
-        className="!h-3 !w-3 !bg-slate-300"
+        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-300"
       />
       <Handle
         id="source-bottom"
         type="source"
         position={Position.Bottom}
-        className="!h-3 !w-3 !bg-slate-300"
+        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-300"
       />
       <Handle
         id="target-left"
         type="target"
         position={Position.Left}
-        className="!h-3 !w-3 !bg-slate-300"
+        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-300"
       />
       <Handle
         id="source-right"
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !bg-slate-300"
+        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-300"
       />
     </>
   );
@@ -80,13 +80,13 @@ export function NodeShell({
       <div className="relative">
         <Handles />
         <div
-            className={cn(
-            "flex h-36 w-36 rotate-45 items-center justify-center border-2 bg-white shadow-[0_22px_40px_-22px_rgba(15,23,42,0.45)]",
+          className={cn(
+            "flex h-36 w-36 rotate-45 items-center justify-center border-2 bg-slate-950/95 shadow-[0_24px_44px_-22px_rgba(2,6,23,0.95)] backdrop-blur",
             className,
           )}
           style={{
             borderColor: node.color,
-            backgroundColor: `${node.color}14`,
+            background: `linear-gradient(180deg, ${node.color}24 0%, rgba(15,23,42,0.96) 74%)`,
           }}
         >
           <div className="flex -rotate-45 flex-col items-center gap-2 text-center">
@@ -96,7 +96,7 @@ export function NodeShell({
             >
               <Icon className="h-4 w-4" />
             </span>
-            <span className="max-w-24 text-sm font-semibold text-slate-900">
+            <span className="max-w-24 text-sm font-semibold text-slate-100">
               {node.label}
             </span>
           </div>
@@ -110,16 +110,19 @@ export function NodeShell({
       <Handles />
       <div
         className={cn(
-          "relative overflow-hidden border-2 bg-white p-4 text-slate-900 shadow-[0_22px_40px_-22px_rgba(15,23,42,0.45)]",
+          "relative overflow-hidden border-2 bg-slate-950/95 p-4 text-slate-100 shadow-[0_24px_44px_-22px_rgba(2,6,23,0.95)] backdrop-blur",
           shape === "pill" && "rounded-full px-6 py-3",
           shape === "roundedRect" && "rounded-[26px]",
-          shape === "group" && "rounded-[32px] border-dashed bg-slate-50/80",
+          shape === "group" && "rounded-[32px] border-dashed bg-slate-950/75",
           shape === "cylinder" && "rounded-[28px] pt-6 pb-6",
           innerClassName,
         )}
         style={{
           borderColor: node.color,
-          backgroundColor: shape === "group" ? "#f8fafc" : `${node.color}12`,
+          background:
+            shape === "group"
+              ? "linear-gradient(180deg, rgba(51,65,85,0.34) 0%, rgba(15,23,42,0.86) 100%)"
+              : `linear-gradient(180deg, ${node.color}22 0%, rgba(15,23,42,0.96) 68%)`,
         }}
       >
         {shape === "cylinder" ? (
@@ -149,7 +152,7 @@ export function NodeShell({
           </span>
           <div className="space-y-0.5">
             <div className="text-sm font-semibold leading-tight">{node.label}</div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
               {node.kind}
             </div>
           </div>
